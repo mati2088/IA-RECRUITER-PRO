@@ -245,11 +245,14 @@ def show_app():
                 data = msg["content"]
                 candidates = data['candidates']
                 
-                if candidates:
-                    st.success(f"✅ Análisis Completado: {len(candidates)} Candidatos Viables")
+                # Filtrar candidatos con puntaje bajo (ej. < 40%)
+                viable_candidates = [c for c in candidates if c.get('Score', 0) >= 40]
+                
+                if viable_candidates:
+                    st.success(f"✅ Análisis Completado: {len(viable_candidates)} Candidatos Viables")
                     
                     # 1. Tabla
-                    df = pd.DataFrame(candidates)
+                    df = pd.DataFrame(viable_candidates)
                     st.dataframe(df, use_container_width=True)
                     
                     colA, colB = st.columns(2)
@@ -272,11 +275,12 @@ def show_app():
                     
                     # 3. Análisis Detallado (Texto)
                     st.markdown("### 🔍 Detalles")
-                    for c in candidates:
+                    for c in viable_candidates:
                         st.markdown(f"**{c['Nombre']}** ({c['Score']}%)")
                         st.caption(c['Reason'])
                 else:
-                    st.warning("⚠️ No se encontraron candidatos que coincidan con esta búsqueda en los CVs cargados.")
+                    st.warning("⚠️ No se encontraron candidatos viables para esta descripción.")
+                    # Opcional: Mostrar por qué fueron descartados si se desea, pero por limpieza lo omitimos por ahora
             else:
                 st.markdown(msg["content"])
 
