@@ -185,22 +185,25 @@ def show_login():
         st.write("") # Espacio
         if st.button("INGRESAR AL SISTEMA", type="primary"):
             if user_key:
+                # 1. Validar Key
                 with st.spinner("Validando API Key con Google..."):
                     is_valid, msg = validate_key_connection(user_key)
                     if is_valid:
+                        # 2. Guardar en session state
                         st.session_state['user_api_key'] = user_key
+                        st.session_state.page = 'app'
                         st.success(f"✅ Key Válida. Bienvenido 🚀")
                         time.sleep(1)
-                        st.session_state.page = 'app'
+                        # 3. Recargar
                         st.rerun()
                     else:
                         st.error(msg)
                 
             elif password == "antigravity": 
                 st.session_state['user_api_key'] = None # Usar system key
+                st.session_state.page = 'app'
                 st.success("Acceso concedido (Modo Invitado)")
                 time.sleep(1)
-                st.session_state.page = 'app'
                 st.rerun()
             else:
                 st.error("❌ Credenciales inválidas. Ingresa una API Key válida o la contraseña correcta.")
@@ -222,11 +225,11 @@ def show_app():
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Salir"):
-                st.session_state.page = 'login'
+            if st.button("Salir", key="btn_salir_sidebar"):
+                st.session_state.clear()
                 st.rerun()
         with col2:
-            if st.button("Limpiar Chat"):
+            if st.button("Limpiar Chat", key="btn_limpiar_chat"):
                 st.session_state.messages = [{"role": "assistant", "content": "Hola. Pásame la Job Description (JD) para analizar a tus candidatos."}]
                 st.rerun()
 
@@ -240,38 +243,40 @@ def show_app():
             # Si el contenido es un dict (JSON parseado), mostramos widgets
             if isinstance(msg["content"], dict) and "candidates" in msg["content"]:
                 data = msg["content"]
-                st.success(f"✅ Análisis Completado: {len(data['candidates'])} Candidatos Viables")
+                candidates = data['candidates']
                 
-                # 1. Tabla
-                df = pd.DataFrame(data['candidates'])
-                st.dataframe(df, use_container_width=True)
-                
-                colA, colB = st.columns(2)
-                # 2. Exportar Excel (CSV Limpio)
-                with colA:
-                    try:
-                        # Limpiar acentos en todo el DF
-                        df_clean = df.applymap(remove_accents)
-                    except:
-                        df_clean = df
+                if candidates:
+                    st.success(f"✅ Análisis Completado: {len(candidates)} Candidatos Viables")
                     
-                    csv = df_clean.to_csv(index=False, sep=';').encode('utf-8')
-                    st.download_button(
-                        "📥 Descargar Reporte (CSV)", 
-                        data=csv, 
-                        file_name="reporte_rrhh.csv", 
-                        mime="text/csv",
-                        key=f"download_{i}"
-                    )
-                
-                # (Email eliminado a petición del usuario)
-
-                # 3. Análisis Detallado (Texto)
-                st.markdown("### 🔍 Detalles")
-                for c in data['candidates']:
-                    st.markdown(f"**{c['Nombre']}** ({c['Score']}%)")
-                    st.caption(c['Reason'])
-
+                    # 1. Tabla
+                    df = pd.DataFrame(candidates)
+                    st.dataframe(df, use_container_width=True)
+                    
+                    colA, colB = st.columns(2)
+                    # 2. Exportar Excel (CSV Limpio)
+                    with colA:
+                        try:
+                            # Limpiar acentos en todo el DF
+                            df_clean = df.applymap(remove_accents)
+                        except:
+                            df_clean = df
+                        
+                        csv = df_clean.to_csv(index=False, sep=';').encode('utf-8')
+                        st.download_button(
+                            "📥 Descargar Reporte (CSV)", 
+                            data=csv, 
+                            file_name="reporte_rrhh.csv", 
+                            mime="text/csv",
+                            key=f"download_{i}"
+                        )
+                    
+                    # 3. Análisis Detallado (Texto)
+                    st.markdown("### 🔍 Detalles")
+                    for c in candidates:
+                        st.markdown(f"**{c['Nombre']}** ({c['Score']}%)")
+                        st.caption(c['Reason'])
+                else:
+                    st.warning("⚠️ No se encontraron candidatos que coincidan con esta búsqueda en los CVs cargados.")
             else:
                 st.markdown(msg["content"])
 
